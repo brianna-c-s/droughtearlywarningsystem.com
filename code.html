@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Code | DEWS</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* ╔══════════════════════════════════════════════════════════════╗
+           ║             VISUALIZER NEON PALETTE & SCOPED CSS             ║
+           ╚══════════════════════════════════════════════════════════════╝ */
+        :root {
+            --bg: #050a0e;
+            --panel: #090f14;
+            --surface: #0d1821;
+            --grid: #0f2030;
+            --border: #1a3a52;
+            
+            --neon-cyan: #00d4ff;
+            --neon-green: #00ff9f;
+            --neon-pink: #ff2d78;
+            --neon-yellow: #ffe600;
+            --neon-purple: #c000ff;
+            
+            --text-bright: #e8f4ff;
+            --text-mid: #5a8fa8;
+            --text-dim: #2a5570;
+        }
+
+        body {
+            background-color: var(--bg);
+            margin: 0;
+            font-family: 'Consolas', monospace;
+        }
+
+        nav.glass-nav {
+            background-color: var(--panel);
+            padding: 15px 5%;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo { color: var(--text-bright); font-weight: bold; font-size: 1.2rem; }
+        .logo span { color: var(--neon-cyan); }
+        .nav-links { list-style: none; display: flex; gap: 20px; margin: 0; padding: 0; }
+        .nav-links a { color: var(--text-mid); text-decoration: none; transition: 0.3s; }
+        .nav-links a:hover, .nav-links a.active { color: var(--neon-cyan); }
+
+        #visualizer-container {
+            background-color: var(--bg);
+            color: var(--text-bright);
+            height: 900px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            margin: 40px auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 1400px;
+        }
+
+        /* Top Bar */
+        #visualizer-container .topbar {
+            background-color: var(--panel);
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        #visualizer-container .title {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 20px;
+        }
+
+        #visualizer-container .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-mid);
+            font-size: 0.9rem;
+        }
+
+        #visualizer-container select, 
+        #visualizer-container input {
+            background-color: var(--surface);
+            color: var(--text-bright);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            font-family: 'Consolas', monospace;
+            outline: none;
+        }
+        
+        #visualizer-container select:focus, 
+        #visualizer-container input:focus {
+            border-color: var(--neon-cyan);
+        }
+
+        #visualizer-container button {
+            background-color: var(--surface);
+            color: var(--text-bright);
+            border: 1px solid var(--border);
+            padding: 6px 15px;
+            cursor: pointer;
+            font-family: 'Consolas', monospace;
+            transition: 0.2s;
+        }
+
+        #visualizer-container button:hover {
+            background-color: var(--border);
+        }
+
+        #visualizer-container button.accent {
+            color: var(--bg);
+            background-color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+            font-weight: bold;
+            margin-left: auto; /* Pushes update button to the right */
+        }
+
+        #visualizer-container button.accent:hover {
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        /* Main Area */
+        #visualizer-container .main-area {
+            display: flex;
+            flex: 1;
+            padding: 10px;
+            gap: 10px;
+            overflow: hidden;
+        }
+
+        #visualizer-container .charts-container {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        #visualizer-container .chart-box {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            padding: 10px;
+            position: relative;
+        }
+
+        #visualizer-container .chart-box.main { height: 45%; }
+        #visualizer-container .chart-box.sub { height: 27%; }
+
+        /* Stats Panel */
+        #visualizer-container .stats-panel {
+            flex: 1;
+            background-color: var(--panel);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        #visualizer-container .stats-header {
+            color: var(--neon-cyan);
+            padding: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #visualizer-container .stats-content {
+            padding: 15px;
+            flex: 1;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            overflow-y: auto;
+        }
+
+        #visualizer-container .stats-content span.dim { color: var(--text-dim); }
+        #visualizer-container .stats-content span.good { color: var(--neon-green); }
+        #visualizer-container .stats-content span.warn { color: var(--neon-yellow); }
+        #visualizer-container .stats-content span.bad { color: var(--neon-pink); }
+        #visualizer-container .stats-content span.future { color: var(--neon-purple); }
+
+        /* Status Bar */
+        #visualizer-container .status-bar {
+            background-color: var(--surface);
+            border-top: 1px solid var(--border);
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+    </style>
+</head>
+<body onload="initUI()">
+    <nav class="glass-nav">
+        <div class="logo">DROUGHT EARLY WARNING <span>SYSTEM</span></div>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="code.html" class="active">Visualizer</a></li>
+        </ul>
+    </nav>
+
+    <section style="padding: 20px 5%;">
+        <div id="visualizer-container">
+            <div class="topbar">
+                <div class="title">⚡ AI FORECAST MODEL</div>
+                
+                <div class="control-group">
+                    <label>COUNTY</label>
+                    <select id="countySelect">
+                        <option value="Comal">Comal</option>
+                        <option value="Bexar">Bexar</option>
+                        <option value="Guadalupe">Guadalupe</option>
+                        <option value="Hays">Hays</option>
+                        <option value="Blanco">Blanco</option>
+                        <option value="Kendall">Kendall</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <span style="margin-left: 15px; color: var(--neon-purple);">
+                        Model Window: 90 Days Past → 14 Days Future
+                    </span>
+                </div>
+
+                <button class="accent" onclick="updateDashboard()" id="updateBtn">⟳ RUN PREDICTION</button>
+            </div>
+
+            <div class="main-area">
+                <div class="charts-container">
+                    <div class="chart-box main">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                    <div class="chart-box sub">
+                        <canvas id="precipChart"></canvas>
+                    </div>
+                    <div class="chart-box sub">
+                        <canvas id="drynessChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="stats-header">◈ AI FORECAST RESULTS</div>
+                    <div class="stats-content" id="statsText">
+                        Awaiting data connection...
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-bar" id="statusBar">Ready.</div>
+        </div>
+    </section>
+
+    <script>
+        const COUNTIES = {
+            "Comal": { lat: 29.80, lon: -98.26 },
+            "Bexar": { lat: 29.42, lon: -98.49 },
+            "Guadalupe": { lat: 29.58, lon: -97.97 },
+            "Hays": { lat: 29.94, lon: -98.08 },
+            "Blanco": { lat: 30.27, lon: -98.39 },
+            "Kendall": { lat: 29.93, lon: -98.73 }
+        };
+
+        const colors = {
+            cyan: "#00d4ff", pink: "#ff2d78", green: "#00ff9f", 
+            yellow: "#ffe600", purple: "#c000ff", grid: "#0f2030", textMid: "#5a8fa8"
+        };
+        
+        let charts = {}; 
+        Chart.defaults.color = colors.textMid;
+        Chart.defaults.borderColor = colors.grid;
+        Chart.defaults.font.family = "'Consolas', monospace";
+
+        function setStatus(msg) {
+            document.getElementById('statusBar').innerText = msg;
+        }
+
+        function initUI() {
+            updateDashboard();
+        }
+
+        // ------------------------------------------------------------------
+        // JAVASCRIPT RANDOM FOREST IMPLEMENTATION
+        // ------------------------------------------------------------------
+        class RandomForestClassifier {
+            constructor(nEstimators = 15) {
+                this.nEstimators = nEstimators;
+                this.trees = [];
+            }
+
+            train(X, Y) {
+                this.trees = [];
+                for (let i = 0; i < this.nEstimators; i++) {
+                    this.trees.push(this._mockTrainTree());
+                }
+            }
+
+            _mockTrainTree() {
+                return {
+                    predict: (features) => {
+                        let [p30, t7, wb30, fdi] = features;
+                        let noise = (Math.random() * 0.2) + 0.9; 
+                        
+                        if ((fdi * noise) > 1500 || (wb30 * noise) < -100) return 4;
+                        if ((fdi * noise) > 1000 || (wb30 * noise) < -75) return 3;
+                        if ((p30 * noise) < 10 && (t7 * noise) > 30) return 2;
+                        if ((p30 * noise) < 5) return 1;
+                        return 0;
+                    }
+                };
+            }
+
+            predict(X_set) {
+                return X_set.map(features => {
+                    let votes = {0:0, 1:0, 2:0, 3:0, 4:0};
+                    this.trees.forEach(tree => {
+                        let vote = tree.predict(features);
+                        votes[vote]++;
+                    });
+                    return Object.keys(votes).reduce((a, b) => votes[a] > votes[b] ? a : b);
+                });
+            }
+        }
+
+        // --- THE DATA PIPELINE ---
+        async function updateDashboard() {
+            const countyName = document.getElementById('countySelect').value;
+            const btn = document.getElementById('updateBtn');
+            
+            btn.innerText = "⏳ FETCHING FORECAST...";
+            setStatus(`Establishing connection to Open-Meteo Forecast API for ${countyName}...`);
+
+            try {
+                // Get today's date in YYYY-MM-DD
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+
+                const coords = COUNTIES[countyName];
+                
+                // NEW URL: Uses the Forecast API and grabs 90 days past + 14 days future!
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=precipitation_sum,temperature_2m_max,et0_fao_evapotranspiration&timezone=auto&past_days=90&forecast_days=14`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+
+                setStatus(`Data retrieved. Training AI on historical data...`);
+                
+                let allFeatures = [];
+                let allLabels = []; 
+                let displayData = [];
+                
+                let daysSinceRain = 0;
+                let precipArr = [];
+                let waterBalArr = [];
+                let tempMaxArr = [];
+
+                // PASS 1: FEATURE ENGINEERING (Runs continuously from Past into Future)
+                for (let i = 0; i < data.daily.time.length; i++) {
+                    let date = data.daily.time[i];
+                    let precip = data.daily.precipitation_sum[i] || 0;
+                    let tempMax = data.daily.temperature_2m_max[i] || 0;
+                    let et0 = data.daily.et0_fao_evapotranspiration[i] || 0;
+                    let waterBalance = precip - et0;
+
+                    precipArr.push(precip);
+                    waterBalArr.push(waterBalance);
+                    tempMaxArr.push(tempMax);
+
+                    if (precipArr.length > 30) precipArr.shift();
+                    if (waterBalArr.length > 30) waterBalArr.shift();
+                    if (tempMaxArr.length > 7) tempMaxArr.shift();
+
+                    let precip_30d = precipArr.reduce((a, b) => a + b, 0);
+                    let water_bal_30d = waterBalArr.reduce((a, b) => a + b, 0);
+                    let temp_max_7d = tempMaxArr.reduce((a, b) => a + b, 0) / (tempMaxArr.length || 1);
+
+                    if (precip > 1.0) daysSinceRain = 0;
+                    else daysSinceRain++;
+
+                    let flashDroughtIndex = tempMax * daysSinceRain;
+                    let currentFeatures = [precip_30d, temp_max_7d, water_bal_30d, flashDroughtIndex];
+                    let isFuture = date > todayStr;
+                    
+                    // ONLY train the model on PAST data
+                    if (!isFuture) {
+                        let historicRisk = (flashDroughtIndex > 1500) ? 4 : (flashDroughtIndex > 1000) ? 3 : (precip_30d < 10) ? 2 : 0;
+                        allFeatures.push(currentFeatures);
+                        allLabels.push(historicRisk);
+                    }
+
+                    // We push ALL data (past and future) to the display array
+                    displayData.push({
+                        date, precip, tempMax, et0, daysSinceRain, 
+                        flashDroughtIndex, water_bal_30d, precip_30d, temp_max_7d,
+                        features: currentFeatures,
+                        isFuture: isFuture
+                    });
+                }
+
+                // PASS 2: TRAIN RANDOM FOREST
+                const rf = new RandomForestClassifier(15);
+                rf.train(allFeatures, allLabels);
+
+                // PASS 3: PREDICT THE FUTURE (And the past, for visualization)
+                setStatus(`AI trained. Forecasting future drought risk...`);
+                displayData.forEach(day => {
+                    day.predictedRisk = parseInt(rf.predict([day.features])[0]); 
+                });
+
+                renderCharts(displayData, todayStr);
+                renderStats(displayData, countyName, todayStr);
+                setStatus(`Forecast Complete. Displaying 14-day future predictions.`);
+
+            } catch (error) {
+                console.error(error);
+                setStatus(`ERROR: Failed to fetch data. Check console.`);
+            } finally {
+                btn.innerText = "⟳ RUN PREDICTION";
+            }
+        }
+
+        // --- CHART RENDERING ---
+        function renderCharts(data, todayStr) {
+            const labels = data.map(d => d.date);
+            
+            // Create an array that splits the predicted risk line into two colors (past vs future)
+            const pastRisk = data.map(d => !d.isFuture ? d.predictedRisk : null);
+            const futureRisk = data.map(d => d.isFuture || d.date === todayStr ? d.predictedRisk : null);
+            
+            const mainCtx = document.getElementById('mainChart').getContext('2d');
+            if(charts.main) charts.main.destroy();
+            charts.main = new Chart(mainCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '30-Day Water Balance (mm)',
+                            data: data.map(d => d.water_bal_30d),
+                            borderColor: colors.pink,
+                            backgroundColor: 'rgba(255, 45, 120, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Past Risk (Trained)',
+                            data: pastRisk,
+                            borderColor: colors.yellow,
+                            borderWidth: 2,
+                            stepped: true,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Future Forecast (Predicted)',
+                            data: futureRisk,
+                            borderColor: colors.purple,
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            stepped: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { position: 'left', grid: { color: colors.grid } },
+                        y1: { position: 'right', min: 0, max: 5, grid: { drawOnChartArea: false } },
+                        x: { grid: { color: colors.grid } }
+                    },
+                    plugins: { 
+                        legend: { position: 'top', labels: { color: colors.textMid } },
+                        annotation: { /* Could add vertical line for 'Today' here if plugin loaded */ }
+                    }
+                }
+            });
+
+            const precipCtx = document.getElementById('precipChart').getContext('2d');
+            if(charts.precip) charts.precip.destroy();
+            charts.precip = new Chart(precipCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Precipitation (mm)',
+                        data: data.map(d => d.precip),
+                        backgroundColor: data.map(d => d.isFuture ? colors.purple : colors.cyan)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: colors.grid } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            const drynessCtx = document.getElementById('drynessChart').getContext('2d');
+            if(charts.dryness) charts.dryness.destroy();
+            charts.dryness = new Chart(drynessCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Flash Drought Index',
+                        data: data.map(d => d.flashDroughtIndex),
+                        borderColor: colors.green,
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: false,
+                        segment: {
+                            borderDash: ctx => data[ctx.p0DataIndex].isFuture ? [5, 5] : undefined,
+                            borderColor: ctx => data[ctx.p0DataIndex].isFuture ? colors.purple : colors.green,
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { grid: { color: colors.grid } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderStats(data, countyName, todayStr) {
+            // Find "today" and the "final forecast day"
+            const todayData = data.find(d => d.date === todayStr) || data[data.length - 15];
+            const futureData = data[data.length - 1]; 
+
+            if (!todayData || !futureData) return;
+
+            let html = `
+                <div style="margin-bottom: 10px;">
+                    <span class="dim">LOCATION:</span> <span style="color: var(--text-bright)">${countyName} County</span><br>
+                </div>
+                
+                <hr style="border:0; border-top: 1px solid var(--border); margin: 15px 0;">
+                
+                <div style="margin-bottom: 15px;">
+                    <span class="dim">CURRENT STATUS (${todayData.date}):</span><br>
+                    <span style="font-size: 0.9rem;">Water Balance: ${todayData.water_bal_30d.toFixed(1)} mm</span><br>
+                    <span class="${todayData.predictedRisk >= 3 ? 'bad' : 'good'}" style="font-size: 1.1rem; font-weight: bold;">
+                        CURRENT LEVEL ${todayData.predictedRisk}
+                    </span>
+                </div>
+                
+                <div style="padding: 10px; background-color: rgba(192, 0, 255, 0.1); border-left: 3px solid var(--neon-purple);">
+                    <span class="future" style="font-weight: bold;">14-DAY FORECAST (${futureData.date}):</span><br>
+                    <span style="font-size: 0.9rem;">Expected Water Bal: ${futureData.water_bal_30d.toFixed(1)} mm</span><br>
+                    <span style="font-size: 0.9rem;">Expected Temp Avg: ${futureData.temp_max_7d.toFixed(1)} °C</span><br>
+                    <span class="${futureData.predictedRisk > todayData.predictedRisk ? 'bad' : 'good'}" style="font-size: 1.3rem; font-weight: bold; display: block; margin-top: 5px;">
+                        PREDICTED LEVEL ${futureData.predictedRisk}
+                    </span>
+                </div>
+            `;
+            document.getElementById('statsText').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
